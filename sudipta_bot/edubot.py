@@ -1,10 +1,18 @@
 import os
 import sqlite3
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageHandler, ConversationHandler, filters
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    CallbackQueryHandler,
+    MessageHandler,
+    ConversationHandler,
+    ContextTypes,
+    filters,
+)
 
 TOKEN = "7288836137:AAHY1IAQ_D12Hh1eZZHeYbHSV_U3Sl9rsJU"
-ADMIN_ID =5747731787
+ADMIN_ID = 5747731787  # put your telegram ID here
 
 DB = "data.db"
 
@@ -14,7 +22,6 @@ CAT, NAME, LINK, IMAGE = range(4)
 def init_db():
     conn = sqlite3.connect(DB)
     cur = conn.cursor()
-
     cur.execute("""
     CREATE TABLE IF NOT EXISTS courses(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,7 +31,6 @@ def init_db():
         image TEXT
     )
     """)
-
     conn.commit()
     conn.close()
 
@@ -38,73 +44,76 @@ def db(query, params=(), fetch=False):
     return data
 
 # ================= MENUS =================
-def main_menu(update, context):
-    keyboard = [
-        [InlineKeyboardButton("📚 COURSES", callback_data="courses")]
-    ]
-    update.message.reply_text("✨ Main Menu", reply_markup=InlineKeyboardMarkup(keyboard))
+async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [[InlineKeyboardButton("📚 COURSES", callback_data="courses")]]
+    text = "✨ Main Menu"
 
-def courses_menu(update, context):
+    if update.message:
+        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+    else:
+        await update.callback_query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+
+async def courses_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     cats = db("SELECT DISTINCT category FROM courses", fetch=True)
 
     keyboard = [[InlineKeyboardButton(c[0], callback_data=f"cat_{c[0]}")] for c in cats]
     keyboard.append([InlineKeyboardButton("⬅ Back", callback_data="main")])
 
-    query.edit_message_text("📚 Courses", reply_markup=InlineKeyboardMarkup(keyboard))
+    await query.edit_message_text("📚 Courses", reply_markup=InlineKeyboardMarkup(keyboard))
 
-def show_courses(update, context, category):
+async def show_courses(update: Update, context: ContextTypes.DEFAULT_TYPE, category):
     query = update.callback_query
     data = db("SELECT name, link, image FROM courses WHERE category=?", (category,), True)
 
     for name, link, image in data:
         text = f"🎓 {name}\n{link}"
-        context.bot.send_photo(query.message.chat_id, photo=image, caption=text)
+        await context.bot.send_photo(query.message.chat_id, photo=image, caption=text)
 
-    query.answer()
+    await query.answer()
 
 # ================= BUTTON ROUTER =================
-def button_handler(update, context):
-    query = update.callback_query
-    data = query.data
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    data = q.data
+    await q.answer()
 
     if data == "main":
-        query.message.delete()
-        main_menu(update, context)
+        await main_menu(update, context)
 
     elif data == "courses":
-        courses_menu(update, context)
+        await courses_menu(update, context)
 
     elif data.startswith("cat_"):
-        show_courses(update, context, data.replace("cat_", ""))
+        await show_courses(update, context, data.replace("cat_", ""))
 
 # ================= START =================
-def start(update, context):
-    main_menu(update, context)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await main_menu(update, context)
 
 # ================= ADMIN PANEL =================
-def admin(update, context):
+async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return ConversationHandler.END
-    update.message.reply_text("Send category:")
+    await update.message.reply_text("Send category:")
     return CAT
 
-def add_cat(update, context):
+async def add_cat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["cat"] = update.message.text
-    update.message.reply_text("Send course name:")
+    await update.message.reply_text("Send course name:")
     return NAME
 
-def add_name(update, context):
+async def add_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.text
-    update.message.reply_text("Send course link:")
+    await update.message.reply_text("Send course link:")
     return LINK
 
-def add_link(update, context):
+async def add_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["link"] = update.message.text
-    update.message.reply_text("Send image:")
+    await update.message.reply_text("Send image:")
     return IMAGE
 
-def add_image(update, context):
+async def add_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     photo = update.message.photo[-1].file_id
 
     db(
@@ -112,17 +121,16 @@ def add_image(update, context):
         (context.user_data["cat"], context.user_data["name"], context.user_data["link"], photo)
     )
 
-    update.message.reply_text("✅ Course added!")
+    await update.message.reply_text("✅ Course added!")
     return ConversationHandler.END
 
 # ================= MAIN =================
 init_db()
 
-updater = Updater(TOKEN)
-dp = updater.dispatcher
+app = ApplicationBuilder().token(TOKEN).build()
 
-dp.add_handler(CommandHandler("start", start))
-dp.add_handler(CallbackQueryHandler(button_handler))
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CallbackQueryHandler(button_handler))
 
 conv = ConversationHandler(
     entry_points=[CommandHandler("admin", admin)],
@@ -135,7 +143,6 @@ conv = ConversationHandler(
     fallbacks=[]
 )
 
-dp.add_handler(conv)
+app.add_handler(conv)
 
-updater.start_polling()
-updater.idle()
+app.run_polling()

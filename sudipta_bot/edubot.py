@@ -1,10 +1,10 @@
 import os
 import sqlite3
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageHandler, Filters, ConversationHandler
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageHandler, ConversationHandler, filters
 
-TOKEN ="7288836137:AAHY1IAQ_D12Hh1eZZHeYbHSV_U3Sl9rsJU"
-ADMIN_ID = 5747731787  # put your telegram IDf
+TOKEN = "7288836137:AAHY1IAQ_D12Hh1eZZHeYbHSV_U3Sl9rsJU"
+ADMIN_ID =5747731787
 
 DB = "data.db"
 
@@ -42,10 +42,7 @@ def main_menu(update, context):
     keyboard = [
         [InlineKeyboardButton("📚 COURSES", callback_data="courses")]
     ]
-    update.message.reply_text(
-        "✨ Main Menu",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+    update.message.reply_text("✨ Main Menu", reply_markup=InlineKeyboardMarkup(keyboard))
 
 def courses_menu(update, context):
     query = update.callback_query
@@ -54,10 +51,7 @@ def courses_menu(update, context):
     keyboard = [[InlineKeyboardButton(c[0], callback_data=f"cat_{c[0]}")] for c in cats]
     keyboard.append([InlineKeyboardButton("⬅ Back", callback_data="main")])
 
-    query.edit_message_text(
-        "📚 Courses",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+    query.edit_message_text("📚 Courses", reply_markup=InlineKeyboardMarkup(keyboard))
 
 def show_courses(update, context, category):
     query = update.callback_query
@@ -133,10 +127,10 @@ dp.add_handler(CallbackQueryHandler(button_handler))
 conv = ConversationHandler(
     entry_points=[CommandHandler("admin", admin)],
     states={
-        CAT: [MessageHandler(Filters.text, add_cat)],
-        NAME: [MessageHandler(Filters.text, add_name)],
-        LINK: [MessageHandler(Filters.text, add_link)],
-        IMAGE: [MessageHandler(Filters.photo, add_image)],
+        CAT: [MessageHandler(filters.TEXT, add_cat)],
+        NAME: [MessageHandler(filters.TEXT, add_name)],
+        LINK: [MessageHandler(filters.TEXT, add_link)],
+        IMAGE: [MessageHandler(filters.PHOTO, add_image)],
     },
     fallbacks=[]
 )

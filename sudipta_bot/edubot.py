@@ -6,7 +6,7 @@ from telegram.ext import (
     MessageHandler, ConversationHandler, ContextTypes, filters
 )
 
-TOKEN = os.getenv("7288836137:AAHrl9PVSzX6wYPNw9Py8vd4Hq6fu62_rMI")
+TOKEN = os.getenv("7288836137:AAHY1IAQ_D12Hh1eZZHeYbHSV_U3Sl9rsJU")
 ADMIN_ID = 5747731787
 DB_NAME = "data.db"
 
@@ -160,3 +160,4 @@ if __name__ == "__main__":
     )
 
     app.run_polling()
+
